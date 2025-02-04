@@ -4,7 +4,7 @@
   	<artifactId>platkmframework-boot-core</artifactId> 
   	<version>1.0.0</version>
  
- 	<name>org.platkmframework.boot:platkmframework-core</name>
+ 	<name>org.platkmframework.boot:platkmframework-boot-core</name>
   	<description>core implementation, for web applications</description>
   	<url>https://github.com/platkmframework/platkmframework-boot-core</url>
 	<licenses>

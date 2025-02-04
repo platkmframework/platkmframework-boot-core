@@ -14,7 +14,6 @@ import jakarta.validation.ValidatorFactory;
  */
 public class ValidatorUtil {
 
-	
 	/**
 	 * Base64Util
 	 */
@@ -26,7 +25,7 @@ public class ValidatorUtil {
     /**
      * Atributo factory
      */
-    private static ValidatorFactory factory = null;
+    private static ValidatorFactory factory = Validation.byDefaultProvider().configure().buildValidatorFactory();
 
     /**
      * checkValidation
@@ -34,8 +33,6 @@ public class ValidatorUtil {
      * @throws RequestProcessException RequestProcessException
      */
     public static void checkValidation(Object objBean) throws RequestProcessException {
-        if (factory == null)
-            factory = Validation.byDefaultProvider().configure().buildValidatorFactory();
         Set<ConstraintViolation<Object>> constraintViolations = factory.getValidator().validate(objBean);
         if (constraintViolations.size() > 0) {
             String msg = "";
