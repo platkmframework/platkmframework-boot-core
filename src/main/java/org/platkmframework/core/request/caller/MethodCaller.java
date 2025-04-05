@@ -1,6 +1,6 @@
 /**
  * ****************************************************************************
- *  Copyright(c) 2023 the original author Eduardo Iglesias Taylor.
+ *  Copyright(c) 2025 the original author Eduardo Iglesias Taylor.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -24,8 +24,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+
 import org.apache.commons.lang3.StringUtils;
 import org.platkmframework.annotation.HeaderParam;
 import org.platkmframework.annotation.RequestBody;
@@ -37,10 +38,12 @@ import org.platkmframework.core.request.exception.RequestProcessException;
 import org.platkmframework.core.request.exception.ResourceNotFoundException;
 import org.platkmframework.core.request.exception.ResourcePermissionException;
 import org.platkmframework.core.request.util.ValidateRequiredAttributeUtil;
+import org.platkmframework.doi.data.EndPointInfo;
 import org.platkmframework.security.content.SecurityContent;
 import org.platkmframework.util.reflection.ReflectionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -75,10 +78,34 @@ public class MethodCaller {
      */
     public Object execute(String path, HttpServletRequest req, HttpServletResponse resp) throws RequestProcessException {
         try {
+        	
             logger.info("searching object from -> " + path + " - " + req.getMethod());
-            //String key = "{" + req.getMethod() + ":"  + path + "}";
-            Object controller;
+            Object controller = null;
+            Method method = null;
             Map<String, Object> pathParameter = new HashMap<>();
+            
+            Matcher matcher;
+            for (EndPointInfo endPointInfo : ObjectContainer.instance().getEndPointsInfo()) {
+            	matcher = endPointInfo.getPattern().matcher(path);
+                if (matcher.matches() && (endPointInfo.getHttpMethodName().equalsIgnoreCase(req.getMethod()))) {
+	        		controller = ObjectContainer.instance().getController(endPointInfo.getApiClassName());
+	        		method = ReflectionUtil.findMethod(controller.getClass(), 
+	        				endPointInfo.getMethodName(), 
+	        				endPointInfo.getParamTypes());
+                		
+            		if(endPointInfo.getPathParamNames() != null)
+                		for (int i = 0; i < endPointInfo.getPathParamNames().size(); i++) {
+                			pathParameter.put(endPointInfo.getPathParamNames().get(i), matcher.group(i + 1));
+                        }
+            		
+            		break;
+                }
+            }
+            
+            if (controller != null)
+                return execute(controller, method, pathParameter, req, resp);
+            
+          /*  
             // PathProccesor.getSessionObjectByPath(path, req.getMethod());
             String apiControllerMethodInfo = ObjectContainer.instance().getApiControllerInfo(path + "-" + req.getMethod().toLowerCase());
             if (StringUtils.isNotBlank(apiControllerMethodInfo)) {
@@ -121,14 +148,24 @@ public class MethodCaller {
                         }
                     }
                 }
-            }
+            }*/
             throw new RequestProcessException("recurso no encontrado - " + req.getRequestURL().toString());
         } catch (ResourceNotFoundException | ResourcePermissionException e) {
             throw new RequestProcessException(e);
         }
     }
 
-    /**
+    private boolean isMethodWithSameParameters(String parameterDataTypes, Method method) {
+    	String coma = "";
+		StringBuilder methodStringBuildre = new StringBuilder();
+		for (Parameter parameter : method.getParameters()) {
+			methodStringBuildre.append(coma + parameter.getType().getSimpleName());
+			coma = "-";
+		}
+		return methodStringBuildre.toString().equalsIgnoreCase(parameterDataTypes);
+	}
+
+	/**
      * execute
      * @param controller controller
      * @param method method
